@@ -1,0 +1,824 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Parker Homestead Virtual Archive</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600&family=Oswald:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+
+    <style>
+        :root {
+            --green: #104030;
+            --white: #FFFFFF;
+            --accent: #D8DFDD;
+            --grey: #9D9B92;
+            --black: #000000;
+            --green-light: #1a5c46;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: 'Montserrat', sans-serif;
+            background-color: #f4f6f5;
+            color: var(--black);
+            margin: 0;
+            padding: 0;
+        }
+
+        /* ── HEADER ── */
+        .archive-header {
+            background-color: var(--green);
+            padding: 36px 24px 28px;
+            text-align: center;
+            position: relative;
+        }
+
+        .back-button {
+            position: absolute;
+            left: 24px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(255,255,255,0.1);
+            border: 2px solid rgba(216,223,221,0.3);
+            color: var(--accent);
+            padding: 10px 14px;
+            border-radius: 5px;
+            text-decoration: none;
+            cursor: pointer;
+            font-size: 0.9em;
+            font-weight: 600;
+            transition: background 0.2s, border-color 0.2s;
+            font-family: 'Montserrat', sans-serif;
+        }
+
+        .back-button:hover {
+            background: rgba(216,223,221,0.2);
+            border-color: var(--accent);
+        }
+
+        .archive-header h1 {
+            font-family: 'Oswald', sans-serif;
+            color: var(--accent);
+            margin: 0 0 6px 0;
+            font-size: 2.4em;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .archive-header p {
+            color: rgba(216,223,221,0.7);
+            font-size: 0.85em;
+            margin: 0 0 20px 0;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        /* ── CONTROLS ── */
+        .controls {
+            background-color: var(--green);
+            padding: 0 24px 24px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #searchInput {
+            flex: 1 1 300px;
+            max-width: 520px;
+            padding: 12px 18px;
+            font-family: 'Montserrat', sans-serif;
+            font-size: 0.95em;
+            border: 2px solid rgba(216,223,221,0.4);
+            border-radius: 5px;
+            background: rgba(255,255,255,0.08);
+            color: var(--white);
+            outline: none;
+            transition: border-color 0.2s, background 0.2s;
+        }
+
+        #searchInput::placeholder { color: rgba(216,223,221,0.6); }
+        #searchInput:focus { border-color: var(--accent); background: rgba(255,255,255,0.14); }
+
+        #typeFilter, #sortSelect {
+            padding: 12px 14px;
+            font-family: 'Montserrat', sans-serif;
+            font-size: 0.85em;
+            border: 2px solid rgba(216,223,221,0.4);
+            border-radius: 5px;
+            background: rgba(255,255,255,0.08);
+            color: var(--white);
+            outline: none;
+            cursor: pointer;
+        }
+
+        #typeFilter option, #sortSelect option { background: var(--green); color: var(--white); }
+
+        #resultCount {
+            color: rgba(216,223,221,0.7);
+            font-size: 0.8em;
+            font-weight: 600;
+            width: 100%;
+            text-align: center;
+            padding-top: 4px;
+        }
+
+        /* ── TOGGLE BUTTONS ── */
+        .view-toggle {
+            display: flex;
+            gap: 6px;
+        }
+
+        .view-btn {
+            background: rgba(255,255,255,0.1);
+            border: 2px solid rgba(216,223,221,0.3);
+            color: var(--accent);
+            padding: 10px 14px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: background 0.2s;
+        }
+
+        .view-btn.active { background: rgba(216,223,221,0.25); border-color: var(--accent); }
+
+        /* ── MAIN CONTENT ── */
+        .archive-body { padding: 24px; }
+
+        /* ── GRID VIEW ── */
+        .archive-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 24px;
+        }
+
+        /* ── LIST VIEW ── */
+        .archive-list { display: flex; flex-direction: column; gap: 14px; }
+
+        /* ── CARD (GRID) ── */
+        .card {
+            background-color: var(--white);
+            border: 1px solid var(--accent);
+            border-radius: 8px;
+            overflow: hidden;
+            transition: transform 0.2s, box-shadow 0.2s;
+            cursor: pointer;
+        }
+
+        .card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 20px rgba(16,64,48,0.13);
+        }
+
+        .card-img-wrap {
+            width: 100%;
+            height: 200px;
+            overflow: hidden;
+            background-color: var(--accent);
+            position: relative;
+        }
+
+        .card-img-wrap img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-bottom: 3px solid var(--green);
+            display: block;
+        }
+
+        .card-img-wrap .no-img {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Oswald', sans-serif;
+            color: var(--grey);
+            font-size: 0.9em;
+            border-bottom: 3px solid var(--green);
+            gap: 6px;
+        }
+
+        .card-content { padding: 18px; }
+
+        .card h2 {
+            font-family: 'Oswald', sans-serif;
+            color: var(--green);
+            margin: 0 0 6px 0;
+            font-size: 1.2em;
+            line-height: 1.3;
+        }
+
+        .meta-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-bottom: 10px;
+        }
+
+        .badge {
+            font-size: 0.72em;
+            font-weight: 600;
+            padding: 3px 8px;
+            border-radius: 3px;
+            background: var(--accent);
+            color: var(--green);
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+        }
+
+        .badge.date { background: var(--green); color: var(--accent); }
+
+        .card-desc {
+            font-size: 0.85em;
+            color: var(--grey);
+            line-height: 1.55;
+            margin: 0 0 12px;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .card-meta-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px 10px;
+            margin-top: 10px;
+            border-top: 1px solid var(--accent);
+            padding-top: 10px;
+        }
+
+        .meta-item { font-size: 0.78em; }
+        .meta-label { color: var(--grey); font-weight: 600; display: block; margin-bottom: 1px; }
+        .meta-value { color: var(--black); }
+
+        .card-links { margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap; }
+
+        .link-btn {
+            font-size: 0.75em;
+            font-weight: 600;
+            padding: 6px 12px;
+            border-radius: 4px;
+            text-decoration: none;
+            display: inline-block;
+            transition: background 0.2s;
+        }
+
+        .link-btn.primary {
+            background: var(--green);
+            color: var(--white);
+        }
+
+        .link-btn.primary:hover { background: var(--green-light); }
+
+        .link-btn.secondary {
+            background: var(--accent);
+            color: var(--green);
+        }
+
+        .link-btn.secondary:hover { background: #c5ceca; }
+
+        /* ── LIST CARD ── */
+        .list-card {
+            background: var(--white);
+            border: 1px solid var(--accent);
+            border-radius: 8px;
+            display: flex;
+            gap: 0;
+            overflow: hidden;
+            cursor: pointer;
+            transition: box-shadow 0.2s;
+        }
+
+        .list-card:hover { box-shadow: 0 4px 14px rgba(16,64,48,0.1); }
+
+        .list-thumb {
+            width: 120px;
+            min-height: 120px;
+            flex-shrink: 0;
+            background: var(--accent);
+            overflow: hidden;
+        }
+
+        .list-thumb img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        .list-thumb .no-img {
+            width: 100%;
+            height: 100%;
+            min-height: 120px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75em;
+            color: var(--grey);
+            gap: 4px;
+        }
+
+        .list-body {
+            padding: 14px 18px;
+            flex: 1;
+            min-width: 0;
+        }
+
+        .list-body h2 {
+            font-family: 'Oswald', sans-serif;
+            color: var(--green);
+            margin: 0 0 6px;
+            font-size: 1.1em;
+        }
+
+        .list-body .card-desc { margin-bottom: 8px; -webkit-line-clamp: 2; }
+
+        /* ── MODAL ── */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.55);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .modal-overlay.open { display: flex; }
+
+        .modal {
+            background: var(--white);
+            border-radius: 10px;
+            max-width: 740px;
+            width: 100%;
+            max-height: 88vh;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        .modal-header {
+            background: var(--green);
+            padding: 22px 24px;
+            border-radius: 10px 10px 0 0;
+        }
+
+        .modal-header h2 {
+            font-family: 'Oswald', sans-serif;
+            color: var(--accent);
+            margin: 0 0 6px;
+            font-size: 1.6em;
+            padding-right: 36px;
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 16px; right: 18px;
+            background: none;
+            border: none;
+            color: var(--accent);
+            font-size: 1.5em;
+            cursor: pointer;
+            line-height: 1;
+        }
+
+        .modal-body { padding: 24px; }
+
+        .modal-img {
+            width: 100%;
+            max-height: 340px;
+            object-fit: contain;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            background: var(--accent);
+        }
+
+        .modal-fields {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px 20px;
+        }
+
+        .modal-field { font-size: 0.88em; }
+        .modal-field .label { font-weight: 600; color: var(--green); display: block; margin-bottom: 3px; text-transform: uppercase; font-size: 0.78em; letter-spacing: 0.5px; }
+        .modal-field .value { color: var(--black); line-height: 1.5; }
+        .modal-field.full { grid-column: 1 / -1; }
+
+        .modal-links { margin-top: 20px; display: flex; gap: 10px; flex-wrap: wrap; }
+
+        /* ── EMPTY / LOADING ── */
+        .status-msg {
+            text-align: center;
+            grid-column: 1 / -1;
+            font-family: 'Oswald', sans-serif;
+            color: var(--grey);
+            font-size: 1.3em;
+            padding: 60px 20px;
+        }
+
+        /* ── RESPONSIVE ── */
+        @media (max-width: 600px) {
+            .archive-header h1 { font-size: 1.7em; }
+            .back-button {
+                position: static;
+                transform: none;
+                display: inline-block;
+                margin-bottom: 12px;
+                width: 100%;
+                max-width: 200px;
+            }
+            .modal-fields { grid-template-columns: 1fr; }
+            .modal-field.full { grid-column: 1; }
+            .list-thumb { width: 80px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="archive-header">
+    <a href="https://parkerhomestead1665.org" class="back-button">← Back</a>
+    <h1>The Parker Homestead</h1>
+    <p>Virtual Archive &mdash; Book & Postcard Collection</p>
+</div>
+
+<div class="controls">
+    <input type="text" id="searchInput" placeholder="Search titles, authors, dates, descriptions...">
+    <select id="typeFilter"><option value="">All Item Types</option></select>
+    <select id="sortSelect">
+        <option value="title">Sort: Title A–Z</option>
+        <option value="date">Sort: Date</option>
+        <option value="creator">Sort: Author</option>
+        <option value="id">Sort: ID</option>
+    </select>
+    <div class="view-toggle">
+        <button class="view-btn active" id="gridBtn" title="Grid view">&#9783;</button>
+        <button class="view-btn" id="listBtn" title="List view">&#9776;</button>
+    </div>
+    <div id="resultCount"></div>
+</div>
+
+<div class="archive-body">
+    <div class="archive-grid" id="archiveContainer">
+        <div class="status-msg">Loading archive&hellip;</div>
+    </div>
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modalOverlay">
+    <div class="modal" id="modalBox">
+        <div class="modal-header">
+            <button class="modal-close" id="modalClose">&times;</button>
+            <h2 id="modalTitle"></h2>
+            <div class="meta-row" id="modalBadges"></div>
+        </div>
+        <div class="modal-body">
+            <img class="modal-img" id="modalImg" src="" alt="" onerror="this.style.display='none'">
+            <div class="modal-fields" id="modalFields"></div>
+            <div class="modal-links" id="modalLinks"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ── CONFIG ──────────────────────────────────────────────
+    // Change this if your CSV file has a different name
+    const CSV_FILE = "import_master.csv";
+
+    // Change this if your images are in a different sub-folder
+    const IMG_FOLDER = "images/";
+
+    // ── STATE ────────────────────────────────────────────────
+    let allData = [];
+    let viewMode = "grid"; // "grid" | "list"
+
+    // ── COLUMN MAP ──────────────────────────────────────────
+    // These match your EXACT CSV headers
+    function getField(row, key) {
+        return (row[key] || "").trim();
+    }
+
+    function getTitle(row)       { return getField(row, "Dublin Core:Title") || "Untitled"; }
+    function getCreator(row)     { return getField(row, "Dublin Core:Creator"); }
+    function getDate(row)        { return getField(row, "Dublin Core:Date"); }
+    function getDesc(row)        { return getField(row, "Dublin Core:Description"); }
+    function getIdentifier(row)  { return getField(row, "Dublin Core:Identifier"); }
+    function getIsFormatOf(row)  { return getField(row, "Dublin Core:Is Format Of"); }
+    function getPublisher(row)   { return getField(row, "Dublin Core:Publisher"); }
+    function getSubject(row)     { return getField(row, "Dublin Core:Subject"); }
+    function getType(row)        { return getField(row, "Dublin Core:Type"); }
+    function getItemType(row)    { return getField(row, "item_type_name"); }
+    function getAddressee(row)   { return getField(row, "Item Type Metadata:Addressee"); }
+    function getAddressor(row)   { return getField(row, "Item Type Metadata:Addressor"); }
+    function getFeatures(row)    { return getField(row, "Item Type Metadata:Features"); }
+    function getPostmark(row)    { return getField(row, "Item Type Metadata:Place of Postmark"); }
+    function getMessage(row)     { return getField(row, "Item Type Metadata:Written Message"); }
+    function getCollection(row)  { return getField(row, "Collection_Name"); }
+    function getTags(row)        { return getField(row, "tags"); }
+    function getUrl(row)         { return getField(row, "url"); }
+    function getId(row)          { return getField(row, "id"); }
+    function getFeatured(row)    { return getField(row, "featured"); }
+
+    // Image: use Final_Image_Path column if it points to a real file,
+    // otherwise fall back to building path from id
+    function getImgSrc(row) {
+        const raw = getField(row, "Final_Image_Path");
+        if (raw && raw !== "no_image_found" && !raw.startsWith("no_")) {
+            // If it's already a full URL, use it directly
+            if (raw.startsWith("http")) return raw;
+            // Otherwise treat as local filename
+            return IMG_FOLDER + raw;
+        }
+        // Try constructing from id  (e.g. images/3437.jpg)
+        const id = getId(row);
+        if (id) return IMG_FOLDER + id + ".jpg";
+        return null;
+    }
+
+    // ── LOAD CSV ─────────────────────────────────────────────
+    Papa.parse(CSV_FILE, {
+        download: true,
+        header: true,
+        skipEmptyLines: true,
+        complete(results) {
+            allData = results.data;
+            populateTypeFilter(allData);
+            render(allData);
+        },
+        error(err) {
+            document.getElementById("archiveContainer").innerHTML =
+                `<div class="status-msg">Could not load CSV: ${err.message}<br><small>Make sure import_master.csv is in the same folder as this HTML file.</small></div>`;
+        }
+    });
+
+    // ── POPULATE TYPE FILTER ──────────────────────────────────
+    function populateTypeFilter(data) {
+        const types = [...new Set(data.map(r => getItemType(r) || getType(r)).filter(Boolean))].sort();
+        const sel = document.getElementById("typeFilter");
+        types.forEach(t => {
+            const o = document.createElement("option");
+            o.value = t; o.textContent = t;
+            sel.appendChild(o);
+        });
+    }
+
+    // ── FILTER & SORT ────────────────────────────────────────
+    function getFiltered() {
+        const q = document.getElementById("searchInput").value.toLowerCase();
+        const type = document.getElementById("typeFilter").value;
+        const sort = document.getElementById("sortSelect").value;
+
+        let data = allData.filter(row => {
+            const matchType = !type || (getItemType(row) || getType(row)) === type;
+            const matchQ = !q || Object.values(row).some(v => String(v).toLowerCase().includes(q));
+            return matchType && matchQ;
+        });
+
+        data.sort((a, b) => {
+            if (sort === "date") return getDate(a).localeCompare(getDate(b));
+            if (sort === "creator") return getCreator(a).localeCompare(getCreator(b));
+            if (sort === "id") return getId(a).localeCompare(getId(b));
+            return getTitle(a).localeCompare(getTitle(b));
+        });
+
+        return data;
+    }
+
+    // ── RENDER ────────────────────────────────────────────────
+    function render(data) {
+        const container = document.getElementById("archiveContainer");
+        document.getElementById("resultCount").textContent =
+            data.length + " item" + (data.length !== 1 ? "s" : "");
+
+        container.className = viewMode === "list" ? "archive-list" : "archive-grid";
+
+        if (data.length === 0) {
+            container.innerHTML = '<div class="status-msg">No items match your search.</div>';
+            return;
+        }
+
+        container.innerHTML = "";
+        data.forEach((row, idx) => {
+            container.appendChild(viewMode === "list" ? buildListCard(row) : buildGridCard(row));
+        });
+    }
+
+    function createNoImagePlaceholder(size = 'large') {
+        const fontSize = size === 'large' ? '1.8em' : '1.4em';
+        const el = document.createElement('div');
+        el.className = 'no-img';
+        el.innerHTML = `<span style="font-size: ${fontSize};">⌂</span><span>No Image</span>`;
+        return el;
+    }
+
+    // ── GRID CARD ─────────────────────────────────────────────
+    function buildGridCard(row) {
+        const card = document.createElement("div");
+        card.className = "card";
+        card.onclick = () => openModal(row);
+
+        const imgSrc = getImgSrc(row);
+        const imgWrap = document.createElement("div");
+        imgWrap.className = "card-img-wrap";
+        
+        if (imgSrc) {
+            const img = document.createElement("img");
+            img.src = imgSrc;
+            img.alt = getTitle(row);
+            img.loading = "lazy";
+            img.onerror = function() {
+                this.replaceWith(createNoImagePlaceholder('large'));
+            };
+            imgWrap.appendChild(img);
+        } else {
+            imgWrap.appendChild(createNoImagePlaceholder('large'));
+        }
+
+        const creator = getCreator(row);
+        const date = getDate(row);
+        const desc = getDesc(row);
+        const publisher = getPublisher(row);
+        const subject = getIdentifier(row) || getSubject(row);
+        const itemType = getItemType(row) || getType(row);
+        const tags = getTags(row);
+
+        const content = document.createElement("div");
+        content.className = "card-content";
+        content.innerHTML = `
+            <h2>${esc(getTitle(row))}</h2>
+            <div class="meta-row">
+                ${date ? `<span class="badge date">${esc(date)}</span>` : ""}
+                ${itemType ? `<span class="badge">${esc(itemType)}</span>` : ""}
+                ${tags ? `<span class="badge">${esc(tags.split("|")[0])}</span>` : ""}
+            </div>
+            ${desc ? `<p class="card-desc">${esc(desc)}</p>` : ""}
+            <div class="card-meta-grid">
+                ${creator ? `<div class="meta-item"><span class="meta-label">Author</span><span class="meta-value">${esc(creator)}</span></div>` : ""}
+                ${publisher ? `<div class="meta-item"><span class="meta-label">Publisher</span><span class="meta-value">${esc(publisher)}</span></div>` : ""}
+                ${subject ? `<div class="meta-item"><span class="meta-label">Call No.</span><span class="meta-value">${esc(subject)}</span></div>` : ""}
+                ${getCollection(row) ? `<div class="meta-item"><span class="meta-label">Collection</span><span class="meta-value">${esc(getCollection(row))}</span></div>` : ""}
+            </div>
+        `;
+        
+        card.appendChild(imgWrap);
+        card.appendChild(content);
+        return card;
+    }
+
+    // ── LIST CARD ─────────────────────────────────────────────
+    function buildListCard(row) {
+        const card = document.createElement("div");
+        card.className = "list-card";
+        card.onclick = () => openModal(row);
+
+        const imgSrc = getImgSrc(row);
+        const imgThumb = document.createElement("div");
+        imgThumb.className = "list-thumb";
+        
+        if (imgSrc) {
+            const img = document.createElement("img");
+            img.src = imgSrc;
+            img.alt = getTitle(row);
+            img.loading = "lazy";
+            img.onerror = function() {
+                this.replaceWith(createNoImagePlaceholder('small'));
+            };
+            imgThumb.appendChild(img);
+        } else {
+            imgThumb.appendChild(createNoImagePlaceholder('small'));
+        }
+
+        const creator = getCreator(row);
+        const date = getDate(row);
+        const desc = getDesc(row);
+
+        const body = document.createElement("div");
+        body.className = "list-body";
+        body.innerHTML = `
+            <h2>${esc(getTitle(row))}</h2>
+            <div class="meta-row">
+                ${date ? `<span class="badge date">${esc(date)}</span>` : ""}
+                ${creator ? `<span class="badge">${esc(creator)}</span>` : ""}
+            </div>
+            ${desc ? `<p class="card-desc">${esc(desc)}</p>` : ""}
+        `;
+        
+        card.appendChild(imgThumb);
+        card.appendChild(body);
+        return card;
+    }
+
+    // ── MODAL ─────────────────────────────────────────────────
+    function openModal(row) {
+        document.getElementById("modalTitle").textContent = getTitle(row);
+
+        // Badges
+        const badgesEl = document.getElementById("modalBadges");
+        const date = getDate(row);
+        const itemType = getItemType(row) || getType(row);
+        badgesEl.innerHTML = [
+            date ? `<span class="badge date">${esc(date)}</span>` : "",
+            itemType ? `<span class="badge">${esc(itemType)}</span>` : "",
+            getFeatured(row) === "TRUE" ? `<span class="badge" style="background:#D8DFDD;color:#104030;">Featured</span>` : ""
+        ].join("");
+
+        // Image
+        const imgEl = document.getElementById("modalImg");
+        const imgSrc = getImgSrc(row);
+        if (imgSrc) {
+            imgEl.src = imgSrc;
+            imgEl.style.display = "block";
+            imgEl.alt = getTitle(row);
+        } else {
+            imgEl.style.display = "none";
+        }
+
+        // Fields
+        const fields = [
+            { label: "Author / Creator",    value: getCreator(row) },
+            { label: "Date",                value: getDate(row) },
+            { label: "Publisher",           value: getPublisher(row) },
+            { label: "Subject / Call No.",  value: getIdentifier(row) || getSubject(row) },
+            { label: "Item Type",           value: getItemType(row) || getType(row) },
+            { label: "Collection",          value: getCollection(row) },
+            { label: "Addressee",           value: getAddressee(row) },
+            { label: "Addressor",           value: getAddressor(row) },
+            { label: "Features",            value: getFeatures(row) },
+            { label: "Place of Postmark",   value: getPostmark(row) },
+            { label: "Tags",                value: getTags(row) },
+            { label: "Archive ID",          value: getId(row) },
+            { label: "Description",         value: getDesc(row),        full: true },
+            { label: "Written Message",     value: getMessage(row),     full: true },
+            { label: "Is Format Of",        value: getIsFormatOf(row),  full: true },
+        ];
+
+        const fieldsEl = document.getElementById("modalFields");
+        fieldsEl.innerHTML = fields
+            .filter(f => f.value)
+            .map(f => `
+                <div class="modal-field ${f.full ? "full" : ""}">
+                    <span class="label">${f.label}</span>
+                    <span class="value">${esc(f.value)}</span>
+                </div>`)
+            .join("");
+
+        // Links
+        const linksEl = document.getElementById("modalLinks");
+        const ext = getIsFormatOf(row);
+        linksEl.innerHTML = [
+            ext && ext.startsWith("http") ? `<a class="link-btn secondary" href="${ext}" target="_blank" rel="noopener">External Source</a>` : "",
+        ].join("");
+
+        document.getElementById("modalOverlay").classList.add("open");
+        document.body.style.overflow = "hidden";
+    }
+
+    function closeModal() {
+        document.getElementById("modalOverlay").classList.remove("open");
+        document.body.style.overflow = "";
+    }
+
+    document.getElementById("modalClose").onclick = closeModal;
+    document.getElementById("modalOverlay").onclick = function(e) {
+        if (e.target === this) closeModal();
+    };
+    document.addEventListener("keydown", e => { if (e.key === "Escape") closeModal(); });
+
+    // ── SEARCH / FILTER EVENTS ────────────────────────────────
+    ["searchInput", "typeFilter", "sortSelect"].forEach(id => {
+        document.getElementById(id).addEventListener("input", () => render(getFiltered()));
+    });
+
+    // ── VIEW TOGGLE ───────────────────────────────────────────
+    document.getElementById("gridBtn").onclick = function() {
+        viewMode = "grid";
+        this.classList.add("active");
+        document.getElementById("listBtn").classList.remove("active");
+        render(getFiltered());
+    };
+
+    document.getElementById("listBtn").onclick = function() {
+        viewMode = "list";
+        this.classList.add("active");
+        document.getElementById("gridBtn").classList.remove("active");
+        render(getFiltered());
+    };
+
+    // ── UTILS ─────────────────────────────────────────────────
+    function esc(str) {
+        return String(str)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;");
+    }
+</script>
+</body>
+</html>
